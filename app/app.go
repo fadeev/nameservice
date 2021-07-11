@@ -84,6 +84,9 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	// this line is used by starport scaffolding # stargate/app/moduleImport
+	nameservicemodule "github.com/cosmonaut/nameservice/x/nameservice"
+	nameservicemodulekeeper "github.com/cosmonaut/nameservice/x/nameservice/keeper"
+	nameservicemoduletypes "github.com/cosmonaut/nameservice/x/nameservice/types"
 
 	"github.com/tendermint/spm/cosmoscmd"
 )
@@ -135,6 +138,7 @@ var (
 		transfer.AppModuleBasic{},
 		vesting.AppModuleBasic{},
 		// this line is used by starport scaffolding # stargate/app/moduleBasic
+		nameservicemodule.AppModuleBasic{},
 	)
 
 	// module account permissions
@@ -147,6 +151,7 @@ var (
 		govtypes.ModuleName:            {authtypes.Burner},
 		ibctransfertypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
 		// this line is used by starport scaffolding # stargate/app/maccPerms
+		nameservicemoduletypes.ModuleName: {authtypes.Minter, authtypes.Burner, authtypes.Staking},
 	}
 )
 
@@ -203,6 +208,8 @@ type App struct {
 
 	// this line is used by starport scaffolding # stargate/app/keeperDeclaration
 
+	NameserviceKeeper nameservicemodulekeeper.Keeper
+
 	// the module manager
 	mm *module.Manager
 }
@@ -236,6 +243,7 @@ func New(
 		govtypes.StoreKey, paramstypes.StoreKey, ibchost.StoreKey, upgradetypes.StoreKey,
 		evidencetypes.StoreKey, ibctransfertypes.StoreKey, capabilitytypes.StoreKey,
 		// this line is used by starport scaffolding # stargate/app/storeKey
+		nameservicemoduletypes.StoreKey,
 	)
 	tkeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey)
 	memKeys := sdk.NewMemoryStoreKeys(capabilitytypes.MemStoreKey)
@@ -331,6 +339,15 @@ func New(
 		&stakingKeeper, govRouter,
 	)
 
+	app.NameserviceKeeper = *nameservicemodulekeeper.NewKeeper(
+		appCodec,
+		keys[nameservicemoduletypes.StoreKey],
+		keys[nameservicemoduletypes.MemStoreKey],
+
+		app.BankKeeper,
+	)
+	nameserviceModule := nameservicemodule.NewAppModule(appCodec, app.NameserviceKeeper)
+
 	// this line is used by starport scaffolding # stargate/app/keeperDefinition
 
 	// Create static IBC router, add transfer route, then set and seal it
@@ -369,6 +386,7 @@ func New(
 		params.NewAppModule(app.ParamsKeeper),
 		transferModule,
 		// this line is used by starport scaffolding # stargate/app/appModule
+		nameserviceModule,
 	)
 
 	// During begin block slashing happens after distr.BeginBlocker so that
@@ -402,6 +420,7 @@ func New(
 		evidencetypes.ModuleName,
 		ibctransfertypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/initGenesis
+		nameservicemoduletypes.ModuleName,
 	)
 
 	app.mm.RegisterInvariants(&app.CrisisKeeper)
@@ -589,6 +608,7 @@ func initParamsKeeper(appCodec codec.BinaryMarshaler, legacyAmino *codec.LegacyA
 	paramsKeeper.Subspace(ibctransfertypes.ModuleName)
 	paramsKeeper.Subspace(ibchost.ModuleName)
 	// this line is used by starport scaffolding # stargate/app/paramSubspace
+	paramsKeeper.Subspace(nameservicemoduletypes.ModuleName)
 
 	return paramsKeeper
 }
